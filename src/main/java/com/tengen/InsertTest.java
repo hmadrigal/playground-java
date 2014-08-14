@@ -4,6 +4,7 @@ import com.mongodb.*;
 import org.bson.types.ObjectId;
 
 import java.net.UnknownHostException;
+import java.util.Arrays;
 
 /**
  * Created by herberthm on 8/13/2014.
@@ -33,9 +34,13 @@ public class InsertTest {
         System.out.println("OBJ2|AFTER: %s" + doc2);
 
         // Inserting multiple docs
+        DBObject doc3 = new BasicDBObject();
+        doc3.put("x",3);
+        DBObject doc4 = new BasicDBObject();
+        doc4.put("x",4);
+        collection.insert(Arrays.asList(doc3,doc4));
 
-
-        // Trying to insert a duplicated document... throws an exception
-
+        // Trying to insert a duplicated document... throws com.mongodb.MongoException
+        collection.insert(doc1);
     }
 }
