@@ -25,6 +25,9 @@ import com.mongodb.DBObject;
 import com.mongodb.WriteResult;
 import com.sun.org.apache.bcel.internal.generic.ACONST_NULL;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 
 public class BlogPostDAO {
@@ -39,7 +42,9 @@ public class BlogPostDAO {
 
         DBObject post = null;
         // XXX HW 3.2,  Work Here
-
+        post = postsCollection.findOne(
+                new BasicDBObject("permalink",permalink)
+        );
 
 
         return post;
@@ -49,10 +54,18 @@ public class BlogPostDAO {
     // how many posts are returned.
     public List<DBObject> findByDateDescending(int limit) {
 
-        List<DBObject> posts = null;
+        List<DBObject> posts = new ArrayList<DBObject>();
         // XXX HW 3.2,  Work Here
         // Return a list of DBObjects, each one a post from the posts collection
+        DBCursor postCursor = postsCollection
+                                .find()
+                                .sort(new BasicDBObject("date", -1))
+                                .limit(limit);
 
+
+        while (postCursor.hasNext()){
+            posts.add(postCursor.next());
+        }
         return posts;
     }
 
@@ -70,6 +83,14 @@ public class BlogPostDAO {
         // XXX HW 3.2, Work Here
         // Remember that a valid post has the following keys:
         // author, body, permalink, tags, comments, date
+
+        post.append("title", title);
+        post.append("author",username);
+        post.append("body",body);
+        post.append("permalink",permalink);
+        post.append("tags",tags);
+        post.append("comments",Arrays.asList());
+        post.append("date", new Date());
         //
         // A few hints:
         // - Don't forget to create an empty list of comments
@@ -78,7 +99,7 @@ public class BlogPostDAO {
         // - we created the permalink for you above.
 
         // Build the post object and insert it
-
+        postsCollection.insert(post);
 
         return permalink;
     }
