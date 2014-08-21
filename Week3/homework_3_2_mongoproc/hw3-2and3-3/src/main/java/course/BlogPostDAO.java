@@ -24,6 +24,7 @@ import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 import com.mongodb.WriteResult;
 import com.sun.org.apache.bcel.internal.generic.ACONST_NULL;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -126,8 +127,24 @@ public class BlogPostDAO {
         // - best solution uses an update command to the database and a suitable
         //   operator to append the comment on to any existing list of comments
 
+        // Is there a post for the given 'permanetLink'?
+        DBObject post = postsCollection.findOne(new BasicDBObject("permalink",permalink));
+        if (post == null)
+            return;
 
+        // Creates new comment object
+        BasicDBObject newComment = new BasicDBObject("author",name)
+                .append("body",body);
+        if (!(StringUtils.isBlank(email ) || StringUtils.isEmpty(email )))
+            newComment.append("email",email);
 
+        // Lets add the newCommand
+        List<DBObject> comments = post.get("comments") == null ? new ArrayList<DBObject> (): (List<DBObject>)post.get("comments") ;
+        comments.add((DBObject) newComment);
+
+        // Updates the post document
+        post.put("comments",comments);
+        postsCollection.save(post);
     }
 
 
