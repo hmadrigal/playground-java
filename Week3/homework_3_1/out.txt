@@ -1,0 +1,13 @@
+MongoDB shell version: 2.4.9
+connecting to: test
+switched to db school
+{
+	"result" : [
+		{
+			"_id" : 13,
+			"average" : 91.98315917172745
+		}
+	],
+	"ok" : 1
+}
+bye
