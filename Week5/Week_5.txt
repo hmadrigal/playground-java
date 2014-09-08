@@ -91,6 +91,7 @@ $last
 	gets the last value of the result set 
 
 =========================
-LIMITATIONS 
+AGGREGATIONS LIMITATIONS
 =========================
 - There is a max size for the pipeline of 100MB. It can be modified with the option 'allowDiskUse'
+- Pipeline only works up to 100MB of data on each stage. 'allowDiskUse' lets increase this quota.
