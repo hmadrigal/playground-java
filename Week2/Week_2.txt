@@ -1,0 +1,114 @@
+MONGO SHELL
+=========================
+QUERYING DOCUMENTS
+=========================
+OPERATORS
+	$lt [value]
+	$lg [value]
+	$lte [value]
+	$lge [value]
+
+	$type [bson_type_id]
+	$exists [bool]
+	$regex [regex]
+
+COMBINE OPERATORS
+	$or [ expression_object, ... ]
+	$and [ expression_object, ... ]
+	
+QUERYING ARRAYS *It only happens at top level.
+{ arr_prop : 'value'}
+	return the documents where the arr_prop contains the value. 
+	
+{ arr_prop: { $all : [value1, value2, ...] } }
+	return documents that the arr_prop contains all the values.
+	
+{ std_prop: { $in : [value1, value2, ... [ { {
+	return documents where the std_property contains any of the values in the array.
+	
+QUERYING NESTED DOCUMENTS 
+	* Field order match when writing json (because of bson). 
+		{ topDocumentProp1 : { nestedDocProp1 : 'A', nestedDocProp2 : 'B' } }
+		is different from :
+		{ topDocumentProp1 : { nestedDocProp2 : 'A', nestedDocProp1 : 'B' } }
+	the JSON is translated to BSON , and each BSON representation is different, thus only same BSON matches will show up.
+	It will list documents which: have the same properties, in the same order and with the given values.
+	
+	* For querying over nested properties without specifying all other properties, use . (dot) notation.
+	{ "topDocumentProp1.nestedDocProp2" : 'A' }
+	It will list documents in which the property topDocumentProp1.nestedDocProp2 contains a 'A'. 
+	Regardless the amount of properties, order of the field.
+
+Queries are always performed by a cursors
+e.g. in mongo prompt:
+* Mongo prompt executes cursor definitions when they are typed in the prompt, to prevent its execution we add a null; at the end.
+* Cursor definition has many methods , they allow to modify cursor definition (e.g. sort, limit, skip)
+var cur = db.people.find(); null; 
+cur.sort ( name : -1 }.limit(3); null;
+
+=========================
+UPDATING DOCUMENTS
+=========================
+
+db.collection.update ( filter, changeset, options)
+
+[1]
++ Replacing document
+db.collection.update( {filter_expression}, {new_document_content_but_id} )
+
++ $set : Adds or updates fields to the document
+db.collection.update ( {filter_expression}, { $set : { field :  value } } )
+
++ $inc : increments the value of a given field. It could create the field or even the document if it does not exists
+db.collection.update ( {filter_expression}, { $inc : { field :  value_to_add } } )
+
++ $unset : removes a given field from a document
+db.collection.update ( {filter_expression}, { $unset : { field :  value } } )
+
+[2]
++ Updating nested arrays, to identify the array index, use dot syntax (e.g. array_field.index)
+	+ $set : Sets a given value to a given index.
+	db.collection.update ( {filter_expression}, { $set : { 'array_field.index' :  value } } )
+	+ $push : Extends the array by adding a new item. 
+	db.collection.update ( {filter_expression}, { $push : { 'array_field' :  value } } )
+	+ $pop : Decrements the array by removing an item. A negative value remove it from the left side otherwise it is taken from the right side.
+	db.collection.update ( {filter_expression}, { $pop : { 'array_field' :  value } } )
+	+ $pushAll : Appends an array to an array property.
+	db.collection.update ( {filter_expression}, { $pushAll : { 'array_field' :  [value1, value2, ...] } } )
+	+ $pull : Remove an item from the array by specifying its value
+	db.collection.update ( {filter_expression}, { $pull : { 'array_field' :  value } } )
+	+ $pullAll : Remove an item from the array by specifying its value
+	db.collection.update ( {filter_expression}, { $pullAll : { 'array_field' :  [value1,value2,...] } } )
+	+ $addToSet : Inserts an item but prevent duplication. (making the function idempotent, only first call makes effect)
+	db.collection.update ( {filter_expression}, { $addToSet : { 'array_field' :  value } } )
+
+[3]
++  { upsert : true } : Which does an Update Or Insert.
+	db.collection.update ( {filter_expression}, { $set : { field :  value } , { upsert : true } } )
+	if the given record cannot be identified then a new one is created, trying to fill up as much fields as possible.
+
+[4]
++ { multi : true } 
+	db.collection.update ( {filter_expression}, { $set : { field :  value } , { multi : true } } )
+	When multi is set to true, it updates all the documents which match the filter expression.
+	
+	NOTE: 
+		Multi updates works in batches of documents, 	after a given batch is processed it is given a chance to other process to continue, and later on to resume the current update. 
+		This is done to prevent starvation for other reads or writes over the same collection.
+			
+=========================
+DELETING DOCUMENTS
+=========================
+[1] 
+	Each collection has a remove method. filter_expression is optional, an empty filter will let remove all documents.
+	db.collection.remove( filter_expression )
+	
+[2] Remove the collection, and therefore all the related records. Dropping the table is faster than removing each document.
+	db.collection.drop()
+	
+	
+=========================
+VERIFYING WRITE OPERATIONS (  only for <= 2.4 )
+=========================
+db.runCommand ( { getLastError : 1 } )
+return information about the last executed command.

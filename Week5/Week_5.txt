@@ -1,0 +1,96 @@
+=========================
+AGGREGATION
+=========================
+
+Aggregation framework let the developer perform  similar tasks to the ones performed by group by in SQL databases.
+Lets suppose the following documents under the products collection.
+db.products.insert({ name: 'ipad', category: 'table', manufacturer: 'Apple', price: 499 });
+db.products.insert({ name: 'nexus 4', category: 'cell phone', manufacturer: 'Samsung', price: 350});
+
+An example of how to use the aggregation framework is:
+
+db.products.aggregate( [
+	{ 
+		$group : {
+			_id  : '$manufacture',
+			num_products :  {$sum : 1}
+		}
+	}
+])
+
+There is only one parameter, which it's an array containing heterogeneous objects. 
+The first object defines the group output.
+
+
+db.collection.aggregate( [ {  $group : { _id  : '$manufacture', num_products :  {$sum : 1} } } ])
+
+=========================
+AGGREGATION PIPELINE
+=========================
+The aggregation framework works like a pipeline, connecting the the output to the input of many stages (steps). 
+Each stage is represented by an element in the array that we sent when calling the aggregate function. 
+Moreover, each stage in the pipeline can appear many times (e.g. multiple sorts).
+
+collection ->[$project]->[$match]->[$snap]->[$sort]->...-> result
+
+$project 1:1
+	Matches each document field to a new name of field. This is applied to each document.
+$match n:1
+	Applies a filer criteria on the input documents. 
+$group n:1
+	Aggregates by documents by a field. It supports the usage of aggregation functions.
+$sort 1:1
+	Sorts documents by a given field
+$skip n:1
+	Skips a given number of documents
+$limit n:1
+	Limits the number of documents that are returned by the stage.
+$unwind 1:n
+	Expands an array, returning a new document per entry. In this way it could be used by group on next stages.
+$out 1:1
+	Redirects the output of the stage to a collection
+	
+$redact
+	Security related features for controlling user access to documents.
+$geonear
+	allows to perform location based queries in the pipeline
+
+=========================
+COMPOUND GROUPING
+=========================
+During the pipeline, they _id can be based on many fields by creating a document. 
+db.collection.aggregate([
+	{
+		$group : {
+			_id : {
+				new_field1 : "$source_field1",
+				new_field2 : "$source_field2"
+			}
+		}
+	}
+]);
+
+=========================
+AGGREGATION EXPRESSIONS
+=========================
+$sum
+	Adds a given number or 1 per each given key.
+$avg
+	Computes the average for a given key
+$min
+	Gets the minimum key value
+$max
+	Gets the maximum key value
+$push
+	pushes a given key to an array of the resulting document
+$addtoset
+	pushes a given key to an array of the resulting document, but it does not duplicate keys values.
+$first
+	gets the first value of the result set
+$last
+	gets the last value of the result set 
+
+=========================
+LIMITATIONS 
+=========================
+- There is a max size for the pipeline of 100MB. It can be modified with the option 'allowDiskUse'

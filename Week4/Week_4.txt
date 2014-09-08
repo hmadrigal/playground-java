@@ -1,0 +1,206 @@
+=========================
+INDEX
+=========================
+The main goal of an index is to increase the performance when retriving data from a collection.
+An index is a collection of sorted pointers to documents, the sort is defined by a field or many fields and they could
+be ascending or descending.
+
+TRAITS:
+	Increase performance
+	Uses disk space
+	Order of the fields matters when querying or creating
+
+=========================
+CREATING INDEXES
+=========================
+
+db.collection.ensureIndex( { field_name : order }, { option :value } )
+	Creates an index, the order value uses a positive value for ascending indexes and a negative value for descending indexes.
+	Index can have optionally special options to specify behaviours
+	if a given document does not have the given field, then 'null' value is used instead.
+=========================
+DISCOVERING INDEXES
+=========================
+	
+db.system.index.find()
+	Lists all the indexes in the mongodb
+
+db.collection.getIndexes()
+	Lists all the index used by the given collection
+
+=========================
+REMOVING INDEXES
+=========================
+db.collection.dropIndex( { field : 1 } )
+	Drops index out of the system.
+	
+=========================
+MULTI KEY INDEX
+=========================
+MongoDB lets create index on multivalue fields. They index is created by ordering using each of all the values of the multi value field (aka Array).
+Because of this a compound index cannot use two two multivalue fields since the combinations may be too much.
+
+This restriction is valid when the index is created by using ensureIndex method, or when modifying a document.
+For example you cannot create an index which uses more than one fields of type Array.
+You cannot the type of a field that would affect the index to try to have two fields of type array.
+
+=========================
+UNIQUE INDEX
+=========================
+Ensures that the inserted value is unique.
+db.collection.ensureIndex( { field_name : order }, { unique : true } )
+
+
+=========================
+REMOVING DUPLICATED KEYS
+=========================
+db.collection.ensureIndex( { field_name : order }, { unique : true , dropDup : true} )
+When the index is being created, the duplicated entries. Use this option cautiously. 
+
+=========================
+SPARSE INDEX
+=========================
+Because of document may not have always the same fields (structure), this implies that when creating an index on a field that is not available on a document, this field will use null as value. 
+if two or more documents lacks of the same fields, and the index is marked to be unique, then it can throw an error because two or more fields have null value.
+An space index will create index entries only for the documents which have the field.
+db.collection.ensureIndex( { field_name : order }, { unique : true , sparse: true } )
+
+
+=========================
+INDEXING ON BACKGROUND
+=========================
+Index creating can be performed in foreground or background. 
+Background => Slower but it won't block writes 
+Foreground => Faster but it will block writes 
+
+=========================
+INDEX AND SIZES
+=========================
+db.collection.stats()
+It provides information about the collection.
+
+
+db.collection.totalIndexSize();
+Provides the size (in bytes) of all the bytes. It's important to keep them in memory since it's where they can perform better.
+
+
+=========================
+INDEX CARDINALITY
+=========================
+Type of index
+REGULAR 	=>  A index entry per each document entry
+SPARCE 		=>  there are less index entries that document entries
+MULTIKEY 	=>  (potentially) there are many index entries per document.
+
+=========================
+INDEX SELECTIVITY
+=========================
+Select fields to index, try to select fields that may represent the document uniquely first when creating compound indexes.
+
+=========================
+INDEX HINT
+=========================
+Provides directions to the mongodb about what index to use.
+.hint( { indexed_field : 1 } )
+	=> uses the given index
+.hint( { $natural : 1 } )
+	=> no index is used.
+
+=========================
+Geospatial: Indexes 2D
+=========================
+2D Coordinates based on a cartesian plane , an example of modelling is:
+{
+	location : [x,y]
+}
+to create a index then:
+	db.collection.ensureIndex( { location : '2d' , type : 1 } )
+*type defines order.
+
+thus for taking advantange of this new index, we can use the following query:
+db.collection.find( { location :  {$near: [x,y] } } )
+
+=========================
+Geospacial: Spherical
+=========================
+In a spherical, we use latitude and longitude. (Mongo stores it in longitude,latitude order). 
+MongoDB uses GeoJson specification to specify structures, for example"
+
+{
+	location  :  {
+		type : 'Point',
+		coordinates : [
+			-122.5995522,
+			37.895943
+		]
+	}
+}
+
+thus, to create an index we use:
+db.collection.ensureIndex( { location : '2dsphere' } )
+
+to query data:
+db.collection.find (
+	location : {$near
+		{
+			$geometry: {
+				type : "Point",
+				coordinates: [ -122.166641, 37.4278925 
+			},
+			$maxDistance: 2000
+		}
+	}
+);
+
+=========================
+FULL TEXT SEARCH
+=========================
+To create it:
+db.collection.ensureIndex( { field : 'text' } )
+
+to query:
+db.collection.find ( { $text : {$search : 'keyword' } } )
+*It ignores some symbols (such as period.(.) and capitalization)
+
+Also you could have a reference to the field which represents how similar to the text it was. 
+the keyword 'textScore' contains this information. E.g:
+
+db.collection.find( { $text : { $search : 'dog'} },  {score: {$meta : 'textScore'}}).sort( { score: {$meta : 'textScore} } )
+The previous query search all the docs which contains the keyword 'dog' and sorts the result showing first the most similar
+
+
+=========================
+Profiling Queries (Quick Facility)
+=========================
+MongoDB will automatically log any query which takes longer than 100MS. This is a great hint for noticing when a query can be come a bottle neck.
+
+Profiling
+There are three levels of profiling
+0: Off
+1: 100MS slow queries only
+2: All my queries.
+it is part of the argument commands of mongo daemon, e.g.:
+$\mongodb --profile 1
+db.system.profile
+
+it sould algo be set programatically
+db.getProfilingLevel()
+db.getProfilingStatus()
+db.setProfilingLevel(level[,timeInMilliseconds]);
+
+
+Profile information can be checked at collection:
+db.system.profile
+
+MONGOTOP
+mongotop provides a overview about what mongo is expending its resources. In a similar way such as 
+
+MONGOSTAS
+mongostats provices information about the status of the server, and mainly the index utilization.
+Please consider that not all queries uses an index, but the one that uses, may  have some missed because of 
+the the index was on disk or 
+
+
+SHARGING
+Sharing it's when my DB is divided among many servers. In this case, to keep a good performance we shuold also provide the shard key when
+updating, removing or finding. When Shard key is provided the modification goes directly to a related server rather than broadcasting the message to all the servers.

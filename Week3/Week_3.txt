@@ -1,0 +1,92 @@
+Mongo Database Structure
+ It's application oriented, by this I mean nested documents should be organized 
+ in a way that makes easier to display data in your application.
+
+
+Atomic Operations comes to rescue when there aren't transactions
+	- Restructure code to use a single document and use Atomic Operations
+	- Implement it in software  (by doing a locking mechanisms)
+	- Tolerate 
+
+Multikey Index
+	When relating documents through linking. An index can be created by the following command:
+	db.collection.ensureIndex( { 'array_field' : 1 } )
+	NOTE: To get information about the execution plan, the method .explain() prints out traits of the query execution.
+	
+Relationships
+	[1:1]
+	You may:
+		- Use forging keys
+		- Embed documents
+		- Create all properties in one single document
+	Think about :
+		- frequency of access (are both data sets always needed together?)
+		- size of the document (e.g. a given data set is updated more frequently than other), a doc max size 16MB
+		- Atomocity of the document (e.g. we need to make sure that both data sets are always stored consistently)
+	[1:N]
+	You may:
+		- [1:Few] Use array properties into the single document. => Array field have a limit of capacity
+		- Use a single document property into each N-document property => There is a chance for inconsistencies and update multiple docs could be complicated.
+		- [1:Many] Use two documents and linking by their _ID
+	Think about:
+		- The size of N, because arrays in documents has limit. 
+		
+	[N:M]
+	You may:
+		- [Few:Few]  Linking an array of _IDs in one of two of the documents. 
+					Having the list in the two docs opens the chance for inconsistencies, be cautious.
+		- [Many:Few] Embedded the few as an array field into the many, however there is a chance for duplicating so much the few_document
+					 many times and giving the chance for inconsistencies. Alternatively the using only an array of _IDS.
+		
+	Think about:
+		- The size an N, the size of M.
+		- Thinking about document creating when embedding properties (e.g. N document could be inserted without creating an M document)
+
+	[Trees] Hierarchy structures
+	You may:
+		- Use a link to a the parent of a document, linking by _id
+		- Use a array field and keep a list of the parents of a document, liking by _ids
+		- Use an array field to keep a list of ancestors (other than the parent(s) link)
+	Think about:
+		- How will you accessing and showing the data?
+
+Denormalize it!
+	It is to prevent duplication and and inconsistencies 
+	[1:1] Embedding documents 
+	[1:Many] Embedding documents (from many to the one)
+	[Many:Many] Link
+	
+
+GridFS: Using GridFS and Blobs (16MB Doc).
+	This is the option for overpassing the limit of the  16 MB Document Size.
+	
+	Thru API (exposed for JAVA, NodeJS, or mongo shell) you create a GridFS collection, (rather than the standard BSON document collection).
+	Once created the GridFS collection, there should be two collections:
+	
+	db.collection.chunks
+		it may contain from 1 to many entries for a given file inserted into the files collection.
+		each document contains a data property holding a chunk of the inserted file.
+	db.collection.files
+		Contains a document with the mongodb metadata for each inserted file, it also contains the custom metadata provided by the user when inserted.
+		
+Object Document Mapper (ODM)
+	It's a proxy layer which sits between the application and the mongo driver.
+	It abstracts driver specific aspects and simplifies the interaction with the mongo storage.
+	
+	There are many frameworks which can be used as ODM. Morphia works on Java/Mongo. 
+	It uses annotations such as:
+		@Entity
+		@Indexes
+		@Index
+		@Indexed
+		@Property
+		@Reference
+		@Id
+		@Version
+	
+	Morphia also provides an API for:
+		- Saving, 
+		- Updating
+		- Querying
+	
+	
