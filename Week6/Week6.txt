@@ -1,0 +1,217 @@
+====================
+APPLICATION ENGINEERING
+===================
+Replication:
+	Keeping the database duplicated in different locations.
+Sharding:
+	Distributing our database in different mongo instances.
+
+===================
+REPLICATION
+===================
+Advancetes of replication:
+	Avaiability:
+		Making sure data is available
+	Fault tolerance:
+		Makes sure that our data is present even tough there are 
+		errors (such as fisical failures)
+
+REPLICASET:
+	A primary mongo instance, which is replicated in secondaries mongo 
+	instances. If the primary goes down for any reasons (e.g. power failure
+	a secondary becomes the primary. Once the malfunctioning node instance 
+	is restored, it could be reinstalled as a secondary. This is called: 
+	'replicaset'. The application talks directly to the replicaset, thus 
+	it does not notice that a given mongo instance was failing.
+
+TYPE OF NODES:
+	+ REGULAR: 
+	Has the data and it can become primary. Participates in
+	the election of a new primary.
+	+ ARBITER(VOTING):
+	Helps to help do decide which will become primary. 
+	Participates in the election of a new primary.
+	It replicates data (as secondary) 
+	+ DELAY/REGULAR:
+	Desaster cover node. It cannot become a primary. 
+	+ HIDDEN:
+	It cannot become primary, but it replates data.
+	Participates in the eleccion of a new primary,
+
+
+=======================
+WRITE CONSISTENSY
+=======================
+- Write operations will go to the primary
+- Read can go to the secondary
+This will help to consistensy. Othewise secondary may let you get outdated data.
+During the failover a write cannot happen, until a new primary is selected.
+
+=======================
+CREATING REPLICA SET
+=======================
+The following command starts up a mongod instance:
+mongod --replSet rs1 --logpath "filepath" --dbpath /data/rs1 --fork --port 27017
+
+
+We start as many instances as we need, however they aren't related to the same replica set. 
+To do so, we instruct mongodb by creating a config object and using specific commands:
+
+config  = {
+	_id : "rs1",
+	members : [
+		{ _id : 0, host : 'hostname1:port1', priority:0 , slaveDelay:5 }
+		{ _id : 1m host : 'hostname2:port2' }
+	]
+}
+
+rs.initiate(config)
+rs.status()
+
+The previous scripts instruct the replica set, and it most be run from a mongo instance that could become primary.
+
+we could prompt information about the instance by using the comment:
+rs.status()
+
+By default you cannot query secondaries instances. Thus use the command:
+rs.slaveOk() 
+to let you query secondary instances
+
+=======================
+FAILOVER AND ROLLBACK
+=======================
+Once the primary fails, the is a chance for the new primary to have lost some writes once it's being selected. 
+When the original primary returns to be online, the writes that weren't duplicated in the secondary are stored into
+a file, and then original primary rollback to an state where it was sync with the secondary.
+
+=======================
+JAVA
+=======================
+To connect to a ReplicaSet when specifying the connection, rather than providing a given hostname and post. 
+We provide a collection of hostnames and ports (in pairs), and if at least one is part of the replica set, then
+the driver will discovery all the nodes of the replica set and handles the communication seamlessly.
+
+If the primary goes down, a MongoException is thrown until a new primary is selected.
+
+=======================
+WRITE CONCERN
+=======================
+It's basically indicating when the write operation should be given by done on the replica set context.
+By default, once the write order has been submitted it is given by acknownledge, which means that once the write 
+instruction is submitted, it is accepted. Even though, it could be in RAM at the primary server, 
+and it hasn't been replicated in the secondary servers. There are many options for setting this level of concern.
+For example:
+
+MongoClient client =  new MongoClient(Array.asList(new ServerAddress("hostname",27017)));
+client.setWriteConcern(WriteConcern.JOURNALED)
+
+Also it's possible to specify the timeout or wheather or not it should wait for write on disk confirmation.
+There are two flags
+w => when to acknownledge the write
+j => whether or not to accept confirmation of the written
+
+=======================
+NETWORK ERRORS
+=======================
+There are certain scenarios where the confirmation (j=1) and the acknowledge of the written (w=1) may lead to 
+network errors, even though the write has happened. 
+
+=======================
+READ PREFERENCES
+=======================
+Primary reads a preferred because they are likely to hold the updated data set (since all write are performed on the primary node).
+Although it's possible to change the read preferences to:
+- Primary
+- Secondary
+- Random Secondary
+- Primary preferred
+- Nearest (based on ping response time)
+
+To control them from Java:
+DB db = client.getDB("database");
+db.setReadPreferences(ReadProference.primary());
+or
+db.collection.setReadPreferences(ReadProference.primary());
+or
+db.colleciton.find().setReadPreferences(ReadProference.primary());
+
+It can be set a different levels.
+
+=======================
+SHARDING
+=======================
+Horizontal scalability, which it's based on distributing my database among many mongo instances. 
+There is one component included in mongodb called: router which it's in change or manage how the data is distributed.
+
+For sharing there are two concepts:
+- range based
+	this means that a given range of documents (chunk) belongs to a given shard (mongo instance). Chunks can be based on a ID, 
+	which implies that a given document cannot be inserted without that ID.
+- shard key
+	Identifies in which mongo instance is the document, if not provided in the query. The router queries all the instances, and aggregates the result.
+
+- config server
+	Normally in production there are one but in dev they could be tree. They are mongo instances knowing where the shard are. They help to keep everything sync.
+
+Keep on mind:
+- Where do I wan to put mydata. (phisical directories where the data is going to be stored).
+- We could use sharing in conjuntion with replica set. 
+
+First to start the instances of mongo DB that will work as shard, use the --shardsvr parameter, for example:
+
+mongod --replSet s0 --logpath "logfile0.log" --dbpath /data/shard0/rs0 --port 37017 --fork --shardsrv
+
+Base on the previous sample, remember to start proplery the replica set by using the configuration object.
+
+Then, we also need to set up config servers, this is done by the --configsvr option, for example:
+mongod --logpath "cfg-a.log" --dbpath /data/config/config-a --port 57017 --fork --configsvr
+
+Now we have to start mongos which would do the routing, this intance will connect all the servers inolved in the sharing (notice that it uses mongos command rather than mongod)
+
+mongos --logpath "mongos-1.log" --configdb config_hotname:port,config_hostname:port --fork
+
+Finally we instruct mongo to use the different shards by using db.adminComand, for example in mongo shell:
+db.adminCommand ( { addshard : 'shardName/Hostname:port } );
+db.adminCommand ( { enableSharding : 'databaseName' });
+db.adminCommand ( { shardCollection : 'database.collection', key :  { field_primary_key : 1 } } )
+
+
+Now you have enough for sharing. Now when you type 'mongo' to access the console, notice that it will prompt 'mongos' to let you kow that it's working on a sharding context. 
+the object 'sh' in the shell contains commands for sharding.
+
+For example:
+
+sh.help()
+	It will print a help of different sharding commands.
+
+sh.status()
+	It will print the status of the current sharding configuraiton. Info such as: found servers, wether or not it's partitiones (shared) a given database. 
+
+db.collection.stats()
+	Also provides information about sharding status, in the flag 'sharded', and the 'shards' object which details info per shard.
+
+db.collection.find().explain()
+	It also provides more information about the shards. Into the 'shard' objects, and it also provides information about which servers is addressing the query.
+
+=============
+IMPLICATION OF SHARDING ON DEVELOPMENT
+=============
+- Everydocument includes a shard key
+- Shard key is inmutable
+- Index start with shard key, (when declaring index). 
+- If not shard is provided to identify the document, then it will scater gather (search in all servers) => Expensive
+- You can't have a unique key, unless it is also part of the shard key
+
+============
+SHARDING + REPLICATION
+===========
+Usually sharding and replication are done together. MongoS will communicate with the primary mono instance on each shard.
+Topics such as  'write concern' are also more complex on this scenario. MongoS will apply the write concern option to all the shard instances. 
+The drivers (used by the applicaiton) are in charge of communicating with the mongos instance. The default mongo driver looks for the specified mongos instance, but it could look for other avaiable if a given fails.
+
+======================
+CHOOSING A SHARD KEY
+======================
+- Make sure that there are sufficien cardinality: The key has many possible values to be used
+- Avoid host spotting: Values of the keys should not have much distance between them.  Keys will determine which server will be used, and to long distanced values they could be always addressed to a given server, which misleads the purpose of the shard. Keep on mind that Shard key cannot use a multikey index.
+
