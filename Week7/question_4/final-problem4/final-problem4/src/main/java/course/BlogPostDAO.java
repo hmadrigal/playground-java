@@ -117,5 +117,14 @@ public class BlogPostDAO {
 	// provided you use num_likes as your key name, no other changes should be required
 	// alternatively, you can use whatever you like but will need to make a couple of other 
 	// changes to templates and post retrieval code.
+
+        DBObject queryObject = new BasicDBObject("permalink",permalink);
+        BasicDBObject foundDocument = (BasicDBObject)postsCollection.findOne(queryObject);
+        List<BasicDBObject> comments = (List<BasicDBObject>)foundDocument.get("comments");
+        BasicDBObject selectedComment = comments.get(ordinal);
+        int num_likes = selectedComment.containsField("num_likes") ? selectedComment.getInt("num_likes",0) : 0;
+        num_likes = num_likes +1;
+        selectedComment.append("num_likes",num_likes);
+        postsCollection.update(queryObject,foundDocument);
     }
 }
