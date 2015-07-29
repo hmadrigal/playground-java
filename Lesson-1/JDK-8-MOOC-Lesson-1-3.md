@@ -1,6 +1,6 @@
-JDK 8 MOOC: Lesson 1-3
+# JDK 8 MOOC: Lesson 1-3 #
 
-Lambda Expressions
+## Lambda Expressions ##
 - They are anonymous functions
 - They are strongly type.
 - La expression can be used  wherever the type is a functional interface. 
@@ -8,7 +8,7 @@ Lambda Expressions
 		This is a single abstract method type
 		The lambda expression provides implementation of the abstract method.
 
-Functional Interface Definition
+## Functional Interface Definition ##
 (One abstract method in which the lambda expression maps to it.)
 
 - An interface.
@@ -23,14 +23,15 @@ Default method is going to be used on old version of Java which provides an impl
 for the interface.
 
 e.g.
-interface FileFilter { bool accept(File x); }
-interface ActionListener { void actionPerformed(...); }
-interface Callable<T> { T call(); }
+
+    interface FileFilter { bool accept(File x); }
+    interface ActionListener { void actionPerformed(...); }
+    interface Callable<T> { T call(); }
 
 Using a lambda expression
 Variable assignment
-	Callable c = () -> process();
+	`Callable c = () -> process();`
 Method parameter
-	new Thread( () -> process()).start();
+	`new Thread( () -> process()).start();`
 	
 
